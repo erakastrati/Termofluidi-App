@@ -2,7 +2,7 @@
 Termofluidi App
 
 
-When i am trying to deploy it:
+Deploying:
 
 1. Create env -- pip install virtualenv
 2. virtualenv venv
