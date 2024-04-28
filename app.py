@@ -1,5 +1,7 @@
 
 import os
+import shutil
+
 import tkinter
 from tkinter import *
 from tkinter.ttk import Treeview, Combobox
@@ -11,24 +13,97 @@ from tkinter import OptionMenu, messagebox
 from tkcalendar import DateEntry
 # creating table
 # cursor.execute("CREATE TABLE clients (name text, code text, pvm_code text, address text)")
-def update_list():
+
+
+def create_shitjet_table():
     conn = sqlite3.connect('client_list.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT name FROM clients")
-    global client_list
-    client_list = [row[0] for row in cursor.fetchall()]
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS shitjet (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kategoria TEXT,
+            data_shpenzimit TEXT,
+            pershkrimi TEXT,
+            cmimi REAL
+        )
+    ''')
+    
+    # Insert a new row into the 'shitjet' table with initial values
+    cursor.execute("INSERT INTO shitjet (kategoria, data_shpenzimit, pershkrimi, cmimi) VALUES (?, ?, ?, ?)", ("Initial Category", "2024-04-26", "Initial Description", 0.0))
+
     conn.commit()
     conn.close()
 
-    
+# Call the function to create the 'shitjet' table
+create_shitjet_table()
+
+
+def create_borxhet_table():
+    conn = sqlite3.connect('client_list.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS borxhet (
+            client_name TEXT,
+            phone_number TEXT,
+            borxh_description TEXT,
+            borxh_amount REAL
+        )
+    ''')
+
+    # Insert a new row into the 'borxhet' table with initial values
+    cursor.execute("INSERT INTO borxhet (client_name, phone_number, borxh_description, borxh_amount) VALUES (?, ?, ?, ?)", ("Initial Client", "Initial Phone", "Initial Description", 0.0))
+
+    conn.commit()
+    conn.close()
+
+# Call the function to create the 'borxhet' table
+create_borxhet_table()
+
+def create_clients_table():
+    conn = sqlite3.connect('client_list.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS clients (
+            name TEXT,
+            code TEXT,
+            pvm TEXT,
+            address TEXT
+        )
+    ''')
+
+    # Insert a new client with initial values
+    cursor.execute("INSERT INTO clients (name, code, pvm, address) VALUES (?, ?, ?, ?)", ("Initial Name", "Initial Code", "Initial PVM", "Initial Address"))
+
+    conn.commit()
+    conn.close()
+
+# Call the function to create the 'clients' table
+create_clients_table()
+
+
+def update_list():
+    try:
+        conn = sqlite3.connect('client_list.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM clients")
+        global client_list
+        client_list = [row[0] for row in cursor.fetchall()]
+        conn.commit()
+    except sqlite3.Error as e:
+        print("Error executing SQL query:", e)
+    finally:
+        conn.close()
+
 update_list()
+
 
 today = date.today()
 no = 0
 
 window = Tk()
 window.title("TERMOFLUIDI")
-frame = Frame(window)
+window.configure(bg="white")  # Set background color to black
+frame = Frame(window, bg="white")  # Set background color of the frame to white
 frame.pack(padx=20, pady=10)
 
 def klientet_new_window():
@@ -164,7 +239,16 @@ def clear_item():
     price.delete(0, tkinter.END)
     price.insert(0, "0.0")
 
+
 folder_path_invoices = "Faturat"
+
+# Check if the directory exists, and create it if it doesn't
+if not os.path.exists(folder_path_invoices):
+    try:
+        os.makedirs(folder_path_invoices)
+    except OSError as e:
+        print(f"Error creating directory '{folder_path_invoices}': {e}")
+
 
 def get_next_invoice_id():
     try:
@@ -188,6 +272,13 @@ def get_next_invoice_id():
         return "00001"
 
 def generate_invoice():
+    print("Inside generate_invoice function")  # Debugging print statement
+    print("Current working directory:", os.getcwd())
+
+    # Print the paths being used to locate the template files
+    print("fletepagesa_template.docx path:", os.path.abspath("fletepagesa_template.docx"))
+    print("invoice_template.docx path:", os.path.abspath("invoice_template.docx"))
+
     doc = DocxTemplate("invoice_template.docx")
     invoice_year2 = date_entry.get()
     car2 = car_entry.get()
@@ -273,16 +364,29 @@ date_entry.grid(row=5,column=0)
 
 client_label = Label(frame, text="Klienti")
 client_label.grid(row=2, column=0, columnspan=3)
+
+
 client = StringVar()
+client.set(" ")  # Set an initial value
 update_list()
 if client_list:
     client.set(client_list[0])
 else:
     client.set(" ")
 
-client_drop = OptionMenu(frame, client, *client_list)
-client_drop.grid(row=3, column=0, columnspan=3, padx=30)
-client_drop.config(width=50)
+try:
+    client_drop = OptionMenu(frame, client, *client_list)
+    client_drop.grid(row=3, column=0, columnspan=3, padx=30)
+    client_drop.config(width=50)
+except Exception as e:
+    print("Error initializing OptionMenu:", e)
+
+# Verify client variable before creating OptionMenu
+print("Client Value:", client.get())
+
+
+# Verify client variable before creating OptionMenu
+print("Client Value:", client.get())
 spacer_frame = Frame(frame, height=20, width=2)
 spacer_frame.grid(row=3, column=0)
 
@@ -393,6 +497,10 @@ if not os.path.exists(folder_path_fletpagesat):
     os.makedirs(folder_path_fletpagesat)
 
 def generate_fletepagesa(adresa, phone_number, cmimi, client_name, client_code, client_address, fletepagesa_id):
+    print("Inside generate_fletepagesa function")  # Debugging print statement
+    
+
+
     doc = DocxTemplate("fletepagesa_template.docx")
 
     client_name_for_filename = client_name.replace(" ", "_")

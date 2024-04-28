@@ -9,5 +9,8 @@ Deploying:
 3. source venv/bin/activate
 4. pip install pyinstaller
 5. pyinstaller --onefile app.py
-6. cd dist
-7. ./Invoice
+6. cd dist/app
+7. ./app
+
+
+pyinstaller --clean app.spec
