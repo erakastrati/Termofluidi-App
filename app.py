@@ -1,5 +1,6 @@
 
 import os
+import sys
 import shutil
 
 import tkinter
@@ -28,13 +29,11 @@ def create_shitjet_table():
         )
     ''')
     
-    # Insert a new row into the 'shitjet' table with initial values
     cursor.execute("INSERT INTO shitjet (kategoria, data_shpenzimit, pershkrimi, cmimi) VALUES (?, ?, ?, ?)", ("Initial Category", "2024-04-26", "Initial Description", 0.0))
 
     conn.commit()
     conn.close()
 
-# Call the function to create the 'shitjet' table
 create_shitjet_table()
 
 
@@ -50,13 +49,11 @@ def create_borxhet_table():
         )
     ''')
 
-    # Insert a new row into the 'borxhet' table with initial values
     cursor.execute("INSERT INTO borxhet (client_name, phone_number, borxh_description, borxh_amount) VALUES (?, ?, ?, ?)", ("Initial Client", "Initial Phone", "Initial Description", 0.0))
 
     conn.commit()
     conn.close()
 
-# Call the function to create the 'borxhet' table
 create_borxhet_table()
 
 def create_clients_table():
@@ -71,13 +68,11 @@ def create_clients_table():
         )
     ''')
 
-    # Insert a new client with initial values
     cursor.execute("INSERT INTO clients (name, code, pvm, address) VALUES (?, ?, ?, ?)", ("Initial Name", "Initial Code", "Initial PVM", "Initial Address"))
 
     conn.commit()
     conn.close()
 
-# Call the function to create the 'clients' table
 create_clients_table()
 
 
@@ -102,8 +97,8 @@ no = 0
 
 window = Tk()
 window.title("TERMOFLUIDI")
-window.configure(bg="white")  # Set background color to black
-frame = Frame(window, bg="white")  # Set background color of the frame to white
+window.configure(bg="white")
+frame = Frame(window, bg="white")
 frame.pack(padx=20, pady=10)
 
 def klientet_new_window():
@@ -242,7 +237,6 @@ def clear_item():
 
 folder_path_invoices = "Faturat"
 
-# Check if the directory exists, and create it if it doesn't
 if not os.path.exists(folder_path_invoices):
     try:
         os.makedirs(folder_path_invoices)
@@ -270,16 +264,27 @@ def get_next_invoice_id():
     except OSError as e:
         print(f"Error accessing directory: {e}")
         return "00001"
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 
 def generate_invoice():
-    print("Inside generate_invoice function")  # Debugging print statement
+    print("Inside generate_invoice function")
     print("Current working directory:", os.getcwd())
 
-    # Print the paths being used to locate the template files
-    print("fletepagesa_template.docx path:", os.path.abspath("fletepagesa_template.docx"))
-    print("invoice_template.docx path:", os.path.abspath("invoice_template.docx"))
+    
+    invoice_template_path = resource_path("invoice_template.docx")
+    print("invoice_template.docx path:", invoice_template_path)
 
-    doc = DocxTemplate("invoice_template.docx")
+
+    doc = DocxTemplate(invoice_template_path)
+
     invoice_year2 = date_entry.get()
     car2 = car_entry.get()
     sum2 = sum(float(item[5]) for item in invoice_list)
@@ -367,7 +372,7 @@ client_label.grid(row=2, column=0, columnspan=3)
 
 
 client = StringVar()
-client.set(" ")  # Set an initial value
+client.set(" ")
 update_list()
 if client_list:
     client.set(client_list[0])
@@ -381,11 +386,9 @@ try:
 except Exception as e:
     print("Error initializing OptionMenu:", e)
 
-# Verify client variable before creating OptionMenu
 print("Client Value:", client.get())
 
 
-# Verify client variable before creating OptionMenu
 print("Client Value:", client.get())
 spacer_frame = Frame(frame, height=20, width=2)
 spacer_frame.grid(row=3, column=0)
@@ -497,11 +500,11 @@ if not os.path.exists(folder_path_fletpagesat):
     os.makedirs(folder_path_fletpagesat)
 
 def generate_fletepagesa(adresa, phone_number, cmimi, client_name, client_code, client_address, fletepagesa_id):
-    print("Inside generate_fletepagesa function")  # Debugging print statement
+    print("Inside generate_fletepagesa function")
     
+    fletepagesa_template_path = resource_path("fletepagesa_template.docx")
 
-
-    doc = DocxTemplate("fletepagesa_template.docx")
+    doc = DocxTemplate(fletepagesa_template_path)
 
     client_name_for_filename = client_name.replace(" ", "_")
 
