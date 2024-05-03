@@ -16,6 +16,14 @@ from tkcalendar import DateEntry
 # cursor.execute("CREATE TABLE clients (name text, code text, pvm_code text, address text)")
 
 
+def table_has_data(table_name):
+    conn = sqlite3.connect('client_list.db')
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count > 0
+
 def create_shitjet_table():
     conn = sqlite3.connect('client_list.db')
     cursor = conn.cursor()
@@ -29,13 +37,13 @@ def create_shitjet_table():
         )
     ''')
     
-    cursor.execute("INSERT INTO shitjet (kategoria, data_shpenzimit, pershkrimi, cmimi) VALUES (?, ?, ?, ?)", ("Initial Category", "2024-04-26", "Initial Description", 0.0))
-
-    conn.commit()
+    if not table_has_data("shitjet"):
+        cursor.execute("INSERT INTO shitjet (kategoria, data_shpenzimit, pershkrimi, cmimi) VALUES (?, ?, ?, ?)", ("Initial Category", "2024-04-26", "Initial Description", 0.0))
+        conn.commit()
+    
     conn.close()
 
 create_shitjet_table()
-
 
 def create_borxhet_table():
     conn = sqlite3.connect('client_list.db')
@@ -49,9 +57,10 @@ def create_borxhet_table():
         )
     ''')
 
-    cursor.execute("INSERT INTO borxhet (client_name, phone_number, borxh_description, borxh_amount) VALUES (?, ?, ?, ?)", ("Initial Client", "Initial Phone", "Initial Description", 0.0))
-
-    conn.commit()
+    if not table_has_data("borxhet"):
+        cursor.execute("INSERT INTO borxhet (client_name, phone_number, borxh_description, borxh_amount) VALUES (?, ?, ?, ?)", ("Initial Client", "Initial Phone", "Initial Description", 0.0))
+        conn.commit()
+    
     conn.close()
 
 create_borxhet_table()
@@ -68,9 +77,10 @@ def create_clients_table():
         )
     ''')
 
-    cursor.execute("INSERT INTO clients (name, code, pvm, address) VALUES (?, ?, ?, ?)", ("Initial Name", "Initial Code", "Initial PVM", "Initial Address"))
-
-    conn.commit()
+    if not table_has_data("clients"):
+        cursor.execute("INSERT INTO clients (name, code, pvm, address) VALUES (?, ?, ?, ?)", ("Initial Name", "Initial Code", "Initial PVM", "Initial Address"))
+        conn.commit()
+    
     conn.close()
 
 create_clients_table()
@@ -97,11 +107,19 @@ no = 0
 
 window = Tk()
 window.title("TERMOFLUIDI")
-window.configure(bg="white")
-frame = Frame(window, bg="white")
+frame = Frame(window)
 frame.pack(padx=20, pady=10)
 
 def klientet_new_window():
+    def populate_treeview():
+        tree2.delete(*tree2.get_children())
+        conn = sqlite3.connect('client_list.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM clients")
+        clients = cursor.fetchall()
+        for client in clients:
+            tree2.insert("", "end", values=client)
+        conn.close()
 
     newWindow = Toplevel(window)
     newWindow.title("Klientet")
@@ -122,21 +140,30 @@ def klientet_new_window():
 
             conn = sqlite3.connect('client_list.db')
             cursor = conn.cursor()
-            
-            if phone_number is not None and pvm is not None and address is not None:
-                cursor.execute("DELETE FROM clients WHERE name=? AND phone_number=? AND pvm=? AND address=?",
-                            (name, phone_number, pvm, address))
-            elif phone_number is not None and pvm is not None:
-                cursor.execute("DELETE FROM clients WHERE name=? AND phone_number=? AND pvm=?",
-                            (name, phone_number, pvm))
-            elif phone_number is not None:
-                cursor.execute("DELETE FROM clients WHERE name=? AND phone_number=?",
-                            (name, phone_number))
-            elif name is not None:
-                cursor.execute("DELETE FROM clients WHERE name=?",
-                            (name,))
+            cursor.execute("PRAGMA table_info(clients)")
+            columns = cursor.fetchall()
+            phone_number_column_exists = any(column[1] == 'phone_number' for column in columns)
+
+            if phone_number_column_exists:
+                if phone_number is not None and pvm is not None and address is not None:
+                    cursor.execute("DELETE FROM clients WHERE name=? AND phone_number=? AND pvm=? AND address=?",
+                                (name, phone_number, pvm, address))
+                elif phone_number is not None and pvm is not None:
+                    cursor.execute("DELETE FROM clients WHERE name=? AND phone_number=? AND pvm=?",
+                                (name, phone_number, pvm))
+                elif phone_number is not None:
+                    cursor.execute("DELETE FROM clients WHERE name=? AND phone_number=?",
+                                (name, phone_number))
             else:
-                messagebox.showwarning("Delete Error", "Selected item does not have any values.")
+                if pvm is not None and address is not None:
+                    cursor.execute("DELETE FROM clients WHERE name=? AND pvm=? AND address=?",
+                                (name, pvm, address))
+                elif pvm is not None:
+                    cursor.execute("DELETE FROM clients WHERE name=? AND pvm=?",
+                                (name, pvm))
+                else:
+                    cursor.execute("DELETE FROM clients WHERE name=?",
+                                (name,))
 
             conn.commit()
             conn.close()
@@ -144,10 +171,6 @@ def klientet_new_window():
             tree2.delete(selected_item)
 
             update_list()
-            client_drop['menu'].delete(0, 'end')
-            for i in client_list:
-                client_drop['menu'].add_command(label=i, command=tkinter._setit(client, i))
-            client.set(client_list[0])
         else:
             messagebox.showwarning("Delete Error", "Selected item does not have any values.")
 
@@ -193,20 +216,23 @@ def klientet_new_window():
     tree2.column('code', width=110)
     tree2.column('pvm', width=110)
     tree2.column('address', width=180)
-    tree2.heading('name', text='Emri i klientit')
-    tree2.heading('code', text='Mbiemri i klientit')
+    tree2.heading('name', text='Klienti')
+    tree2.heading('code', text='Adresa')
     tree2.heading('pvm', text='Numri i telefonit')
-    tree2.heading('address', text="Adresa")
+    tree2.heading('address', text="Komente shtese")
     tree2.grid(row=0, rowspan=12, column=0, columnspan=5, padx=10, pady=10)
+
+    populate_treeview()  
+    
     for i in client_list:
         tree2.insert("", "end", values=i)
 
-    description_label = Label(frame2, text="Emri i klientitt")
+    description_label = Label(frame2, text="Klienti")
     description_label.grid(row=2, column=6)
     description = Entry(frame2, width=32)
     description.grid(row=3, column=6)
 
-    code_label = Label(frame2, text="Mbiemri i klientit")
+    code_label = Label(frame2, text="Adresa")
     code_label.grid(row=4, column=6)
     code_entry = Entry(frame2, width=32)
     code_entry.grid(row=5, column=6)
@@ -216,7 +242,7 @@ def klientet_new_window():
     pvm_entry = Entry(frame2, width=32)
     pvm_entry.grid(row=7, column=6)
 
-    address_label = Label(frame2, text="Adresa")
+    address_label = Label(frame2, text="Komente shtese")
     address_label.grid(row=8, column=6)
     address_entry = Entry(frame2, width=32)
     address_entry.grid(row=9, column=6)
@@ -507,6 +533,7 @@ def generate_fletepagesa(adresa, phone_number, cmimi, client_name, client_code, 
     doc = DocxTemplate(fletepagesa_template_path)
 
     client_name_for_filename = client_name.replace(" ", "_")
+    cmimi = "{:.2f}".format(float(cmimi))
 
     doc.render({
         "adresa": adresa,
@@ -557,7 +584,8 @@ def shitjet_window():
             tree.delete(i) 
 
         for record in records:
-            tree.insert("", "end", values=(record[0], record[1], record[2], record[3]))
+            formatted_cmimi = "{:.2f}".format(record[3])
+            tree.insert("", "end", values=(record[0], record[1], record[2], formatted_cmimi))
 
     new_window = tkinter.Toplevel(window)
     new_window.title("SHPENZIMET")
@@ -642,7 +670,7 @@ def ballina_window():
         total_clients_label = Label(frame_ballina, text=f"Numri i klientëve: {get_total_clients()}")
         total_clients_label.pack(pady=10)
 
-        total_cmimi_label = Label(frame_ballina, text=f"Shuma totale e shpenzimeve: {get_total_cmimi()} €")
+        total_cmimi_label = Label(frame_ballina, text=f"Shuma totale e shpenzimeve: {get_total_cmimi():,.2f} €")
         total_cmimi_label.pack(pady=10)
 
         date_range_label = Label(frame_ballina, text=f"Data prej: {from_date}   Data deri: {to_date}")
@@ -652,7 +680,8 @@ def ballina_window():
 
         for category in categories:
             category_cmimi = get_cmimi_for_category_with_date_filter(category, from_date, to_date)
-            cmimi_label = Label(frame_ballina, text=f"{category}: {category_cmimi} €")
+            formatted_cmimi = "{:.2f}".format(category_cmimi)
+            cmimi_label = Label(frame_ballina, text=f"{category}: {formatted_cmimi} €")
             cmimi_label.pack()
 
     new_window = tkinter.Toplevel(window)
@@ -680,7 +709,7 @@ def ballina_window():
     total_clients_label = Label(frame_ballina, text=f"Numri i klientëve: {get_total_clients()}")
     total_clients_label.pack(pady=10)
 
-    total_cmimi_label = Label(frame_ballina, text=f"Shuma totale e shpenzimeve: {get_total_cmimi()} €")
+    total_cmimi_label = Label(frame_ballina, text=f"Shuma totale e shpenzimeve: {get_total_cmimi():,.2f} €")
     total_cmimi_label.pack(pady=10)
 
     from_date_label = Label(frame_ballina, text="Data prej:")
@@ -774,7 +803,9 @@ def borxhet_window():
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM borxhet")
         for row in cursor.fetchall():
-            debts_table.insert('', 'end', values=row)
+            formatted_row = list(row)
+            formatted_row[-1] = "{:.2f}".format(formatted_row[-1])
+            debts_table.insert('', 'end', values=formatted_row)
         conn.close()
 
     update_debts_table()
@@ -795,6 +826,5 @@ def borxhet_window():
 
 borxhet_button = tkinter.Button(frame, text="BORXHET", command=borxhet_window)
 borxhet_button.grid(row=0, column=4)
-window.configure(background="grey")
 
 window.mainloop()
