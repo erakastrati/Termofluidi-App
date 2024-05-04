@@ -587,6 +587,26 @@ def shitjet_window():
             formatted_cmimi = "{:.2f}".format(record[3])
             tree.insert("", "end", values=(record[0], record[1], record[2], formatted_cmimi))
 
+    def delete_shitje():
+        try:
+            selected_item = tree.selection()[0]  # Get selected item
+            values = tree.item(selected_item, "values")
+            kategoria, data, pershkrimi, cmimi = values
+
+            # Delete from database
+            conn = sqlite3.connect('client_list.db')
+            c = conn.cursor()
+            c.execute('DELETE FROM shitjet WHERE kategoria=? AND data_shpenzimit=? AND pershkrimi=? AND cmimi=?',
+                      (kategoria, data, pershkrimi, cmimi))
+            conn.commit()
+            conn.close()
+
+            # Remove from Treeview
+            tree.delete(selected_item)
+            tkinter.messagebox.showinfo("Success", "Shpenzimi u fshi me sukses.")
+        except IndexError:
+            tkinter.messagebox.showerror("Error", "Ju lutem zgjidhni një shpenzim për të fshirë.")
+
     new_window = tkinter.Toplevel(window)
     new_window.title("SHPENZIMET")
 
@@ -619,8 +639,10 @@ def shitjet_window():
     pershkrimi_entry = Entry(frame_shitjet, width=20)
     pershkrimi_entry.grid(row=1, column=1, padx=10, pady=10)
 
+    delete_shitje_button = Button(frame_shitjet, text="Fshij", command=delete_shitje)
+    delete_shitje_button.grid(row=4, column=1, columnspan=2, pady=10)
 
-    add_shitje_button = Button(frame_shitjet, text="Shto Shitje", command=add_shitje)
+    add_shitje_button = Button(frame_shitjet, text="Shto Shpenzim", command=add_shitje)
     add_shitje_button.grid(row=4, column=0, columnspan=2, pady=10)
 
 
@@ -641,6 +663,8 @@ def shitjet_window():
     tree.grid(row=5, column=0, columnspan=2, padx=10, pady=10)
 
     load_shitjet_from_db()
+
+
 
 
 add_shitjet_button = tkinter.Button(frame, text="SHPENZIMET", command=shitjet_window)
