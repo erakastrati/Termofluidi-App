@@ -12,8 +12,6 @@ from docxtpl import DocxTemplate
 from num2words import num2words
 from tkinter import OptionMenu, messagebox
 from tkcalendar import DateEntry
-# creating table
-# cursor.execute("CREATE TABLE clients (name text, code text, pvm_code text, address text)")
 
 
 def table_has_data(table_name):
@@ -110,148 +108,108 @@ window.title("TERMOFLUIDI")
 frame = Frame(window)
 frame.pack(padx=20, pady=10)
 
-def klientet_new_window():
-    def populate_treeview():
-        tree2.delete(*tree2.get_children())
+
+def clients_window():
+    def add_client():
+        name = name_entry.get()
+        code = code_entry.get()
+        pvm = pvm_entry.get()
+        address = address_entry.get()
+
         conn = sqlite3.connect('client_list.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM clients")
-        clients = cursor.fetchall()
-        for client in clients:
-            tree2.insert("", "end", values=client)
+        c = conn.cursor()
+        c.execute('INSERT INTO clients (name, code, pvm, address) VALUES (?, ?, ?, ?)',
+                  (name, code, pvm, address))
+        conn.commit()
         conn.close()
 
-    newWindow = Toplevel(window)
-    newWindow.title("Klientet")
-    frame2 = Frame(newWindow)
-    frame2.pack(padx=30, pady=10)
+        tree.insert("", "end", values=(name, code, pvm, address))
+        name_entry.delete(0, END)
+        code_entry.delete(0, END)
+        pvm_entry.delete(0, END)
+        address_entry.delete(0, END)
 
+    def load_clients_from_db():
+        conn = sqlite3.connect('client_list.db')
+        c = conn.cursor()
+        c.execute('SELECT name, code, pvm, address FROM clients')
+        records = c.fetchall()
 
-    def delete_selected():
-        selected_item = tree2.selection()[0]
-        item = tree2.item(selected_item)
-        values = item.get("values")
-        
-        if values:
-            name = values[0]
-            phone_number = values[1] if len(values) >= 2 else None
-            pvm = values[2] if len(values) >= 3 else None
-            address = values[3] if len(values) >= 4 else None
+        for i in tree.get_children():
+            tree.delete(i)
+
+        for record in records:
+            tree.insert("", "end", values=record)
+
+    def delete_client():
+        try:
+            selected_item = tree.selection()[0]  # Get selected item
+            values = tree.item(selected_item, "values")
+            name, code, pvm, address = values
 
             conn = sqlite3.connect('client_list.db')
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA table_info(clients)")
-            columns = cursor.fetchall()
-            phone_number_column_exists = any(column[1] == 'phone_number' for column in columns)
-
-            if phone_number_column_exists:
-                if phone_number is not None and pvm is not None and address is not None:
-                    cursor.execute("DELETE FROM clients WHERE name=? AND phone_number=? AND pvm=? AND address=?",
-                                (name, phone_number, pvm, address))
-                elif phone_number is not None and pvm is not None:
-                    cursor.execute("DELETE FROM clients WHERE name=? AND phone_number=? AND pvm=?",
-                                (name, phone_number, pvm))
-                elif phone_number is not None:
-                    cursor.execute("DELETE FROM clients WHERE name=? AND phone_number=?",
-                                (name, phone_number))
-            else:
-                if pvm is not None and address is not None:
-                    cursor.execute("DELETE FROM clients WHERE name=? AND pvm=? AND address=?",
-                                (name, pvm, address))
-                elif pvm is not None:
-                    cursor.execute("DELETE FROM clients WHERE name=? AND pvm=?",
-                                (name, pvm))
-                else:
-                    cursor.execute("DELETE FROM clients WHERE name=?",
-                                (name,))
-
+            c = conn.cursor()
+            c.execute('DELETE FROM clients WHERE name=? AND code=? AND pvm=? AND address=?',
+                      (name, code, pvm, address))
             conn.commit()
             conn.close()
 
-            tree2.delete(selected_item)
+            tree.delete(selected_item)
+            tkinter.messagebox.showinfo("Success", "Klient u fshi me sukses.")
+        except IndexError:
+            tkinter.messagebox.showerror("Error", "Please select a client to delete.")
 
-            update_list()
-        else:
-            messagebox.showwarning("Delete Error", "Selected item does not have any values.")
+    new_window = tkinter.Toplevel(window)
+    new_window.title("Clients Management")
 
+    frame_clients = Frame(new_window)
+    frame_clients.pack(padx=20, pady=10)
 
+    name_label = Label(frame_clients, text="Klienti")
+    name_label.grid(row=0, column=0, padx=10, pady=10)
+    name_entry = Entry(frame_clients, width=20)
+    name_entry.grid(row=0, column=1, padx=10, pady=10)
 
-    def clear_client():
-        description.delete(0, tkinter.END)
-        code_entry.delete(0, tkinter.END)
-        pvm_entry.delete(0, tkinter.END)
-        address_entry.delete(0, tkinter.END)
+    code_label = Label(frame_clients, text="Numri i telefonit")
+    code_label.grid(row=1, column=0, padx=10, pady=10)
+    code_entry = Entry(frame_clients, width=20)
+    code_entry.grid(row=1, column=1, padx=10, pady=10)
 
-    def add_client():
-        description2 = description.get()
-        code_entry2 = code_entry.get()
-        pvm_entry2 = pvm_entry.get()
-        address_entry2 = address_entry.get()
-        client_item = [description2, code_entry2, pvm_entry2, address_entry2]
-        conn = sqlite3.connect('client_list.db')
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO clients VALUES(:description2, :code_entry2, :pvm_entry2, :address_entry2)",
-                       {
-                        'description2': description2,
-                        'code_entry2': code_entry2,
-                        'pvm_entry2': pvm_entry2,
-                        'address_entry2': address_entry2
-                       })
+    pvm_label = Label(frame_clients, text="Adresa")
+    pvm_label.grid(row=2, column=0, padx=10, pady=10)
+    pvm_entry = Entry(frame_clients, width=20)
+    pvm_entry.grid(row=2, column=1, padx=10, pady=10)
 
+    address_label = Label(frame_clients, text="Shenim")
+    address_label.grid(row=3, column=0, padx=10, pady=10)
+    address_entry = Entry(frame_clients, width=20)
+    address_entry.grid(row=3, column=1, padx=10, pady=10)
 
-        conn.commit()
-        conn.close()
-        update_list()
+    add_client_button = Button(frame_clients, text="Shto Klient", command=add_client)
+    add_client_button.grid(row=4, column=0, columnspan=2, pady=10)
 
-        tree2.insert('', tkinter.END, values=client_item)
-        clear_client()
-        client_drop['menu'].delete(0, 'end')
-        for i in client_list:
-            client_drop['menu'].add_command(label=i, command=tkinter._setit(client, i))
-        client.set(client_list[0])
+    delete_client_button = Button(frame_clients, text="Fshij Klient", command=delete_client)
+    delete_client_button.grid(row=4, column=1, columnspan=2, pady=10)
 
-    columns2 = ('name', 'code', 'pvm', 'address')
-    tree2 = Treeview(frame2, columns=columns2, show="headings")
-    tree2.column('name', width=130)
-    tree2.column('code', width=110)
-    tree2.column('pvm', width=110)
-    tree2.column('address', width=180)
-    tree2.heading('name', text='Klienti')
-    tree2.heading('code', text='Adresa')
-    tree2.heading('pvm', text='Numri i telefonit')
-    tree2.heading('address', text="Komente shtese")
-    tree2.grid(row=0, rowspan=12, column=0, columnspan=5, padx=10, pady=10)
+    columns_clients = ("Klienti", "Numri i telefonit", "Adresa", "Shenim")
+    tree = Treeview(frame_clients, columns=columns_clients, show="headings")
 
-    populate_treeview()  
-    
-    for i in client_list:
-        tree2.insert("", "end", values=i)
+    tree.column("Klienti", width=100)
+    tree.column("Numri i telefonit", width=100)
+    tree.column("Adresa", width=100)
+    tree.column("Shenim", width=200)
 
-    description_label = Label(frame2, text="Klienti")
-    description_label.grid(row=2, column=6)
-    description = Entry(frame2, width=32)
-    description.grid(row=3, column=6)
+    tree.heading("Klienti", text="Name")
+    tree.heading("Numri i telefonit", text="Code")
+    tree.heading("Adresa", text="PVM")
+    tree.heading("Shenim", text="Address")
 
-    code_label = Label(frame2, text="Adresa")
-    code_label.grid(row=4, column=6)
-    code_entry = Entry(frame2, width=32)
-    code_entry.grid(row=5, column=6)
+    tree.grid(row=5, column=0, columnspan=2, padx=10, pady=10)
 
-    pvm_label = Label(frame2, text="Numri i telefonit")
-    pvm_label.grid(row=6, column=6)
-    pvm_entry = Entry(frame2, width=32)
-    pvm_entry.grid(row=7, column=6)
+    load_clients_from_db()
 
-    address_label = Label(frame2, text="Komente shtese")
-    address_label.grid(row=8, column=6)
-    address_entry = Entry(frame2, width=32)
-    address_entry.grid(row=9, column=6)
-
-    add_button = Button(frame2, text="Shto", command= add_client)
-    add_button.grid(row=10, column=6, pady=10, sticky="ew")
-
-    del_button = Button(frame2, text="Fshij", command=delete_selected)
-    del_button.grid(row=11, column=6, pady=15, sticky="ew")
+clients_button = tkinter.Button(frame, text="KLIENTET", command=clients_window)
+clients_button.grid(row=0, column=1)
 
 def clear_item():
     description.delete(0, tkinter.END)
@@ -304,7 +262,6 @@ def generate_invoice():
     print("Inside generate_invoice function")
     print("Current working directory:", os.getcwd())
 
-    
     invoice_template_path = resource_path("invoice_template.docx")
     print("invoice_template.docx path:", invoice_template_path)
 
@@ -424,8 +381,7 @@ car_label.grid(row=6, column=0)
 car_entry = Entry(frame, width=20)
 car_entry.grid(row=7, column=0)
 
-add_client = Button(frame, text="KLIENTET", command=klientet_new_window)
-add_client.grid(row=0, column=1)
+
 spacer_frame = Frame(frame, height=20, width=2)
 spacer_frame.grid(row=1, column=1)
 
