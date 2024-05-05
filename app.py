@@ -293,14 +293,20 @@ def generate_invoice():
     # Calculate sum
     sum2 = sum(float(item[5]) for item in invoice_list)
     
-    # Calculate TVSH (pvm)
-    pvm2 = sum2 * 0.09
+    # Calculate TVSH (pvm) based on checkbox
+    if tvsh_checkbox_value.get() == 1:  # TVSH checkbox is checked
+        pvm2 = sum2 * 0.09
+    else:
+        pvm2 = 0  # No TVSH
     
     # Calculate sum without TVSH
     sum_without_tvsh = sum2 - pvm2
     
-    # Calculate total
-    total = sum2
+    # Calculate total based on whether TVSH checkbox is checked
+    if tvsh_checkbox_value.get() == 1:  # TVSH checkbox is checked
+        total = sum2
+    else:
+        total = sum_without_tvsh
     
     # Convert total to words
     numbers2words = num2words(total, to='currency', lang='lt')
@@ -373,6 +379,11 @@ price_label.grid(row=6, column=2)
 price = Spinbox(frame, from_=0.0, to=15000, increment=1, format='%1.2f')
 price.grid(row=7,column=2)
 
+tvsh_checkbox_value = IntVar()
+
+tvsh_checkbox = Checkbutton(frame, text="TVSH", variable=tvsh_checkbox_value)
+tvsh_checkbox.grid(row=8, column=2)
+
 add_button = Button(frame, text="Shto artikull", command=add_item, bg="light green")
 add_button.grid(row=9, column=3)
 
@@ -388,7 +399,9 @@ client_label.grid(row=2, column=0, columnspan=3)
 
 client = StringVar()
 client.set(" ")
+
 update_list()
+
 if client_list:
     client.set(client_list[0])
 else:
@@ -421,7 +434,7 @@ columns = ('ID', 'Artikulli', 'Përshkrimi', 'Sasia', 'Çmimi', 'Shuma')
 tree = Treeview(frame, columns=columns, show="headings")
 tree.column("ID", width=60)
 tree.column("Artikulli", width=300)
-tree.column("Përshkrimi", width=150)  # Adjust width as needed
+tree.column("Përshkrimi", width=150)
 tree.column("Sasia", width=100)
 tree.column("Çmimi", width=100)
 tree.column("Shuma", width=100)
