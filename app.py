@@ -160,7 +160,7 @@ def clients_window():
             tkinter.messagebox.showerror("Error", "Please select a client to delete.")
 
     new_window = tkinter.Toplevel(window)
-    new_window.title("Clients Management")
+    new_window.title("Menaxhimi i klientëve")
 
     frame_clients = Frame(new_window)
     frame_clients.pack(padx=20, pady=10)
@@ -257,25 +257,56 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
+def translate_month(month):
+    translations = {
+        "January": "Janar",
+        "February": "Shkurt",
+        "March": "Mars",
+        "April": "Prill",
+        "May": "Maj",
+        "June": "Qershor",
+        "July": "Korrik",
+        "August": "Gusht",
+        "September": "Shtator",
+        "October": "Tetor",
+        "November": "Nëntor",
+        "December": "Dhjetor"
+    }
+    return translations.get(month, month)
+
+def translate_date(date_str):
+    parts = date_str.split()
+    if len(parts) == 3:
+        day, month, year = parts
+        translated_month = translate_month(month)
+        return f"{day} {translated_month} {year}"
+    return date_str
+
 
 def generate_invoice():
-    print("Inside generate_invoice function")
-    print("Current working directory:", os.getcwd())
-
     invoice_template_path = resource_path("invoice_template.docx")
-    print("invoice_template.docx path:", invoice_template_path)
-
-
     doc = DocxTemplate(invoice_template_path)
 
     invoice_year2 = date_entry.get()
     car2 = car_entry.get()
+    
+    # Calculate sum
     sum2 = sum(float(item[5]) for item in invoice_list)
+    
+    # Calculate TVSH (pvm)
     pvm2 = sum2 * 0.09
-    client_name = client.get()
-    total = sum2 + pvm2
+    
+    # Calculate sum without TVSH
+    sum_without_tvsh = sum2 - pvm2
+    
+    # Calculate total
+    total = sum2
+    
+    # Convert total to words
     numbers2words = num2words(total, to='currency', lang='lt')
-    date_str = date.today().strftime("%d %B %Y")
+    client_name = client.get()
+
+    date_str = translate_date(date.today().strftime("%d %B %Y"))
     invoice_id = get_next_invoice_id()
 
     doc.render({
@@ -284,7 +315,7 @@ def generate_invoice():
         "invoice_id": invoice_id,
         "car": car2,
         "invoice_list": invoice_list,
-        "sum": "{:.2f}".format(sum2),
+        "sum_without_tvsh": "{:.2f}".format(sum_without_tvsh),  # Display sum without TVSH
         "pvm": "{:.2f}".format(pvm2),
         "total": "{:.2f}".format(total),
         "company_name": client_name,
@@ -309,7 +340,8 @@ def add_item():
     price2 = float(price.get())
     sum = "{:.2f}".format(qty2 * price2)
     no += 1
-    invoice_item = [no, description2, "cope", qty2, price2, sum]
+    invoice_item = [no, description2, car_entry.get(), "cope", qty2, price2, sum]
+
     tree.insert('', tkinter.END, values=invoice_item)
     clear_item()
     invoice_list.append(invoice_item)
@@ -385,20 +417,20 @@ car_entry.grid(row=7, column=0)
 spacer_frame = Frame(frame, height=20, width=2)
 spacer_frame.grid(row=1, column=1)
 
-columns = ('ID', 'pav', 'vnt', 'kiek', 'kain', 'sum')
+columns = ('ID', 'Artikulli', 'Përshkrimi', 'Sasia', 'Çmimi', 'Shuma')
 tree = Treeview(frame, columns=columns, show="headings")
 tree.column("ID", width=60)
-tree.column("vnt", width=60)
-tree.column("pav", width=300)
-tree.column("kiek", width=100)
-tree.column("kain", width=100)
-tree.column("sum", width=100)
+tree.column("Artikulli", width=300)
+tree.column("Përshkrimi", width=150)  # Adjust width as needed
+tree.column("Sasia", width=100)
+tree.column("Çmimi", width=100)
+tree.column("Shuma", width=100)
 tree.heading('ID', text='ID')
-tree.heading('pav', text='Artikulli')
-tree.heading('vnt', text='cope')
-tree.heading('kiek', text="Sasia")
-tree.heading('kain', text="Çmimi")
-tree.heading('sum', text="Shuma")
+tree.heading('Artikulli', text='Artikulli')
+tree.heading('Përshkrimi', text='Përshkrimi')
+tree.heading('Sasia', text="Sasia")
+tree.heading('Çmimi', text="Çmimi")
+tree.heading('Shuma', text="Shuma")
 tree.grid(row=10, column=0, columnspan=4, padx=20, pady=10)
 
 save_invoice_button = Button(frame, text="RUAJ FATURËN", command=generate_invoice)
@@ -549,7 +581,6 @@ def shitjet_window():
             values = tree.item(selected_item, "values")
             kategoria, data, pershkrimi, cmimi = values
 
-            # Delete from database
             conn = sqlite3.connect('client_list.db')
             c = conn.cursor()
             c.execute('DELETE FROM shitjet WHERE kategoria=? AND data_shpenzimit=? AND pershkrimi=? AND cmimi=?',
@@ -557,7 +588,6 @@ def shitjet_window():
             conn.commit()
             conn.close()
 
-            # Remove from Treeview
             tree.delete(selected_item)
             tkinter.messagebox.showinfo("Success", "Shpenzimi u fshi me sukses.")
         except IndexError:
