@@ -585,7 +585,11 @@ def shitjet_window():
             tree.delete(i) 
 
         for record in records:
-            formatted_cmimi = "{:.2f}".format(record[3])
+            cmimi = record[3]
+            try:
+                formatted_cmimi = "{:.2f}".format(float(cmimi))
+            except ValueError:
+                formatted_cmimi = cmimi
             tree.insert("", "end", values=(record[0], record[1], record[2], formatted_cmimi))
 
     def delete_shitje():
